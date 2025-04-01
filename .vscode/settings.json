@@ -3,6 +3,10 @@
         "*.sqlbook": "sql",
         "*.ndjson": "jsonl",
         "*.dbclient-js": "javascript",
-        "iostream": "cpp"
+        "iostream": "cpp",
+        "thread": "cpp",
+        "xstring": "cpp",
+        "iosfwd": "cpp",
+        "fstream": "cpp"
     }
 }

@@ -1,0 +1,2 @@
+test_user_1 password [Alabama,Florida]
+test_user_2 password [Arkansas,California]

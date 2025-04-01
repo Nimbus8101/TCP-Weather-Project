@@ -3,19 +3,19 @@
  * 
  * 
  */
-#ifndef USER
-#define USER
+#ifndef USER_CPP
+#define USER_CPP
 #include <iostream>
 #include <string>
 #include <vector>
-#include "messageBox.cpp";
+#include "Inbox.cpp"
 using namespace std;
 
 class User{
     string username;
     vector<string> locations;
     int socketNum;
-    MessageBox inbox;
+    Inbox inbox;
 
 
 };

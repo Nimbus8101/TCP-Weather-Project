@@ -2,24 +2,24 @@ CXX = g++
 
 CXXFLAGS = -Wall -g
 
-TARGET = httpClient.exe httpServer.exe
-TARGET_DEL = httpClient.exe httpServer.exe
+TARGET = tcpClient.exe tcpServer.exe
+TARGET_DEL = tcpClient.exe tcpServer.exe
 
 OBJS = $(SRCS:.cpp=.o)
 
 # Define source files and executable names
-SRC_EXEC1 = httpClient.cpp
-SRC_EXEC2 = httpServer.cpp
-EXEC1 = httpClient
-EXEC2 = httpServer
+SRC_EXEC1 = tcpClient.cpp
+SRC_EXEC2 = tcpServer.cpp
+EXEC1 = tcpClient
+EXEC2 = tcpServer
 
 all: $(EXEC1) $(EXEC2)
 
-httpServer: httpServer.cpp
-	g++ -Wall -g -o httpServer httpServer.cpp -lws2_32
+tcpServer: tcpServer.cpp
+	g++ -Wall -g -o tcpServer tcpServer.cpp -lws2_32
 
-httpClient: httpClient.cpp
-	g++ -Wall -g -o httpClient httpClient.cpp -lws2_32
+tcpClient: tcpClient.cpp
+	g++ -Wall -g -o tcpClient tcpClient.cpp -lws2_32
 
 $(TARGET): $(OBJS)
 	$(CXX) $(CXXFLAGS) -o $(TARGET) $(OBJS) -lws2_32

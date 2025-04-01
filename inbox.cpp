@@ -3,17 +3,17 @@
  * 
  */
 
-#ifndef MESSAGE_BOX
-#define MESSAGE_BOX
+#ifndef INBOX_CPP
+#define INBOX_CPP
 #include <iostream>
 #include <string>
 #include <vector>
 using namespace std;
 
-class MessageBox{
+class Inbox{
     public:
         int MAX_MESSAGE_SIZE = 500;
-        MessageBox(){
+        Inbox(){
 
         }
 

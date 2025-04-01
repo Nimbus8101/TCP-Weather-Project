@@ -14,26 +14,109 @@
 #include <thread>
 using namespace std;
 
-bool login(){
+#define SERVER_IP "127.0.0.1"
+#define PORT 8080
+
+string sendRequest(string request, int connectSocket){
+    string response = "";
+    const char* message = request.c_str();
+    send(connectSocket, message, strlen(message), 0);
+
+    //Waits for a response
+    char recvbuf[1024];
+    int result = recv(connectSocket, recvbuf, sizeof(recvbuf), 0);
+    if(result > 0) {   //If a response was received, display it
+        recvbuf[result] = 0;
+        string result = recvbuf;
+        //cout << "[CLIENT] - Received response:" << endl;
+        cout << result << endl;
+
+        response = result;
+    }else if(result == 0) {
+        cout << "[CLIENT] - Connection closed\n";
+        response = "connection_closed";
+    }else{
+        cout << "[CLIENT] - recv failed: " << WSAGetLastError() << endl;
+        response = "receive_failed";
+    }
+    return response;
+}
+
+/**
+ * Logs the user in
+ * @returns bool representing if the login was successful
+ */
+bool login(int connectSocket){
     cout << "\nPlease input your username: ";
     string username;
     cin >> username;
 
-    cout << "Logging " << username << " in..." << endl;
+    cout << "Please input your password: ";
+    string password;
+    cin >> password;
 
-    //Verify with the server
+    string userRequest = "login=" + username + "+" + password;
 
-    return false;
+    string response = sendRequest(userRequest, connectSocket);
+
+    if(response == "login-request: successful"){
+        cout << "Login successful" << endl;
+        return true;
+    }else if(response == "login-request: failure"){
+        cout << "Login unsuccessful" << endl;
+        return false;
+    }else{
+        cout << "[CLIENT] - An error ocurred" << endl;
+        return false;
+    }
 }
 
-bool registerUser(){
-    cout << "\nPlease input your preferred username: ";
+/**
+ * Registers a new user
+ * @returns bool representing if the user already exists
+ */
+bool registerUser(int connectSocket){
+    cout << "\nPlease input your desired username: ";
     string username;
     cin >> username;
 
-    cout << "Checking if " << username << " exists..." << endl;
+    cout << "Please input your desired password: ";
+    string password;
+    cin >> password;
 
-    return false;
+    // Input sanitization would occur here
+
+    string userRequest = "register=" + username + "+" + password;
+
+    string response = sendRequest(userRequest, connectSocket);
+
+    if(response == "register-request: successful"){
+        cout << "Registration successful" << endl;
+        return true;
+    }else if(response == "register-request: failure account_already_exists"){
+        cout << "Account already exists" << endl;
+        return false;
+    }else if(response == "register-request: failure server_error"){
+        cout << "Registration unsuccessful, try again later" << endl;
+        return false;
+    }else{
+        cout << "[CLIENT] - An error ocurred" << endl;
+        return false;
+    }
+}
+
+
+bool changePassword(int connectSocket){
+    cout << "New password: ";
+    string newPassword;
+    cin >> newPassword;
+
+
+    cout << "Trying to change to " << newPassword << endl;
+
+    string userRequest = "passwordChange=" + newPassword;
+
+    string response = sendRequest(userRequest, connectSocket);
 }
 
 /**
@@ -61,6 +144,7 @@ string parseContent(int argc, char* argv[]){
     }
 }
 
+
 /**
  * Main function
  */
@@ -86,7 +170,7 @@ int main() {
     //Server info setup
     sockaddr_in serverAddress;
     serverAddress.sin_family = AF_INET;
-    serverAddress.sin_port = htons(39756); // Port 39756 for HTTP
+    serverAddress.sin_port = htons(PORT);
     if (inet_pton(AF_INET, "127.0.0.1", &serverAddress.sin_addr) <= 0) {
         cout << "[CLIENT] - Invalid address/ Address not supported" << endl;
         closesocket(connectSocket);
@@ -119,11 +203,11 @@ int main() {
         }
 
         if(userInput == "login" || userInput == "1"){
-            login();
-            loggedIn = true;
+            loggedIn = login(connectSocket);
+            loop = false;
         }
         if(userInput == "register" || userInput == "2"){
-            registerUser();
+            registerUser(connectSocket);
         }
         if(userInput == "logout" || userInput == "3"){
             cout << "Logging out" << endl;
@@ -133,7 +217,7 @@ int main() {
     }while(loop);
 
 
-    do{
+    while(loggedIn){
         string CHANGE_PASSWORD = "Change password";
         string VIEW_LOCATIONS = "View subscribed locations";
         string SUBSCRIBE_LOCATION = "Subscribe to a location";
@@ -178,11 +262,13 @@ int main() {
         if(userInput == VIEW_MESSAGES || userInput == "7"){
         }
         if(userInput == CHANGE_PASSWORD || userInput == "8"){
+            changePassword(connectSocket);
         }
         if(userInput == LOGOUT || userInput == "9"){
+            loggedIn = false;
         }
 
-    }while(loggedIn);
+    }
 
     /** 
     //Loop to repeatedly collect userinput
