@@ -90,7 +90,7 @@ bool registerUser(int connectSocket){
 
     string response = sendRequest(userRequest, connectSocket);
 
-    if(response == "register-request: successful"){
+    if(response == "register-request: success"){
         cout << "Registration successful" << endl;
         return true;
     }else if(response == "register-request: failure account_already_exists"){
@@ -111,13 +111,84 @@ bool changePassword(int connectSocket){
     string newPassword;
     cin >> newPassword;
 
-
     cout << "Trying to change to " << newPassword << endl;
 
-    string userRequest = "passwordChange=" + newPassword;
+    string userRequest = "password-change=" + newPassword;
 
     string response = sendRequest(userRequest, connectSocket);
+
+    if(response == "password-change-request: success"){
+        cout << "Registration successful" << endl;
+        return true;
+    }else if(response == "password-change-request: failure server_error"){
+        cout << "Registration unsuccessful, try again later" << endl;
+        return false;
+    }else{
+        cout << "[CLIENT] - An error ocurred" << endl;
+        return false;
+    }
 }
+
+
+bool subscribeToLocation(int connectSocket){
+    cout << "Type the location you would like to subscribe to: ";
+    string location;
+    cin >> location;
+
+    cout << "Received: " << location << endl;
+
+    string userRequest = "subscribe=" + location;
+
+    string response = sendRequest(userRequest, connectSocket);
+
+    if(response == "subscribe-request: success"){
+        cout << "Location subscription successful" << endl;
+        return true;
+    }else if(response == "subscribe-request: failure server_error"){
+        cout << "Subscription request failed due to a server error" << endl;
+        return false;
+    }else{
+        cout << "Subscription request failed due to a server error" << endl;
+        return false;
+    } 
+}
+
+bool unsubscribeFromLocation(int connectSocket){
+    cout << "Type the location you would like to unsubscribe from: ";
+    string location;
+    cin >> location;
+
+    cout << "Received: " << location << endl;
+
+    string userRequest = "unsubscribe=" + location;
+
+    string response = sendRequest(userRequest, connectSocket);
+
+    if(response == "unsubscribe-request: success"){
+        cout << "Location subscription successful" << endl;
+        return true;
+    }else if(response == "unsubscribe-request: failure server_error"){
+        cout << "Unsubscription request failed due to a server error" << endl;
+        return false;
+    }else{
+        cout << "Unsubscription request failed due to a server error" << endl;
+        return false;
+    } 
+}
+
+bool viewLocations(int connectSocket){
+    string userRequest = "view-locations";
+
+    string response = sendRequest(userRequest, connectSocket);
+
+    response = response.substr(22);
+
+    cout << "Subscribed Locations: \n";
+    cout << response << endl;
+
+    return true;
+}
+
 
 /**
  * Parses the information from the request
@@ -204,7 +275,9 @@ int main() {
 
         if(userInput == "login" || userInput == "1"){
             loggedIn = login(connectSocket);
-            loop = false;
+            if(loggedIn){
+                loop = false;
+            }
         }
         if(userInput == "register" || userInput == "2"){
             registerUser(connectSocket);
@@ -229,14 +302,14 @@ int main() {
         string LOGOUT = "Logout";
 
         cout << "\nYou may:" << endl;
-        cout << "  1. " << CHANGE_PASSWORD << endl;
-        cout << "  2. " << VIEW_LOCATIONS << endl;
-        cout << "  3. " << SUBSCRIBE_LOCATION << endl;
-        cout << "  4. " << UNSUBSCRIBE_LOCATION << endl;
+        cout << "  1. " << SUBSCRIBE_LOCATION << endl;
+        cout << "  2. " << UNSUBSCRIBE_LOCATION << endl;
+        cout << "  3. " << LIST_ONLINE_USERS << endl;
+        cout << "  4. " << PRIVATE_MESSAGE << endl;
         cout << "  5. " << LOCATION_MESSAGE << endl;
-        cout << "  6. " << LIST_ONLINE_USERS << endl;
-        cout << "  7. " << PRIVATE_MESSAGE << endl;
-        cout << "  8. " << VIEW_MESSAGES << endl;
+        cout << "  6. " << VIEW_LOCATIONS << endl;
+        cout << "  7. " << VIEW_MESSAGES << endl;
+        cout << "  8. " << CHANGE_PASSWORD << endl;
         cout << "  9. " << LOGOUT << endl;
         cout << "Please type what you would like to do: ";
         string userInput;
@@ -248,8 +321,10 @@ int main() {
         }
 
         if(userInput == SUBSCRIBE_LOCATION || userInput == "1"){
+            subscribeToLocation(connectSocket);
         }
         if(userInput == UNSUBSCRIBE_LOCATION || userInput == "2"){
+            unsubscribeFromLocation(connectSocket);
         }
         if(userInput == LIST_ONLINE_USERS || userInput == "3"){
         }
@@ -258,6 +333,7 @@ int main() {
         if(userInput == LOCATION_MESSAGE || userInput == "5"){
         }
         if(userInput == VIEW_LOCATIONS || userInput == "6"){
+            viewLocations(connectSocket);
         }
         if(userInput == VIEW_MESSAGES || userInput == "7"){
         }
@@ -267,7 +343,6 @@ int main() {
         if(userInput == LOGOUT || userInput == "9"){
             loggedIn = false;
         }
-
     }
 
     /** 

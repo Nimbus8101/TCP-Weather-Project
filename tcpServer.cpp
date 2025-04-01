@@ -85,26 +85,6 @@ boolean checkIfListening(int tcp_server_socket){
     return true;
 }
 
-/**
- * Parses the request
- * @return string representing the request
- */
-string parseRequest(string httpReceived){
-    string temp = httpReceived.substr(5);
-    int length = temp.find("HTTP") - 1;
-    return temp.substr(0, length);
-}
-
-/**
- * Generates the html page given the html content
- * @return an html page so it can be sent
- */
-string generateHTMLPage(string htmlContent){
-    string newPage = "HTTP/1.1 200 OK\nContent-Type:text/html\nContent-Length: ";
-    newPage += to_string(htmlContent.length()) + "\n\n";
-    newPage += htmlContent;
-    return newPage;
-}
 
 vector<string> split(const string &str, char delimiter) {
     vector<string> tokens;
@@ -122,11 +102,60 @@ vector<string> split(const string &str, char delimiter) {
     return tokens;
 }
 
+string saveUserInformation(User currUser){
+    cout << "(saveUserInformation) currUser: " << currUser.username << " " << currUser.password << " " << currUser.getLocations() << endl;
+
+
+    //Update the information in the database (text file)
+    ifstream inFile("users.txt");  // Open the file for reading
+    if (!inFile.is_open()) {
+        std::cerr << "Error: Unable to open file for reading." << std::endl;
+        return "save-user: failure server_error";
+    }
+
+    vector<string> lines;
+    string line;
+    int index = 0;
+    while (getline(inFile, line)) {
+        cout << line << endl;
+        vector data = split(line, ' ');
+
+        cout << "(saveUser loop) " << lines.size() << ": " << currUser.username << "---" << data.at(0) << " && " << currUser.password << "---" << data.at(1) << endl;
+        if(currUser.username == data.at(0) && currUser.password == data.at(1)){
+            line = currUser.username + " " + currUser.password + " [" + currUser.getLocations() + "]";
+            index = lines.size();
+        }
+
+        lines.push_back(line);
+    }
+
+    inFile.close();
+    cout << index << " / " << lines.size() - 1 << endl;
+    if (index <= 0 || index > lines.size()) {
+        std::cerr << "Error: Invalid line number." << std::endl;
+        return "save-user: failure server_error";
+    }
+
+    std::ofstream outFile("users.txt");  // Open the file for writing
+    if (!outFile.is_open()) {
+        std::cerr << "Error: Unable to open file for writing." << std::endl;
+        return "save-user: failure server_error";
+    }
+
+    for (const auto& l : lines) {
+        outFile << l << "\n";
+    }
+    outFile.close();  // Close the file after writing
+
+    cout << "Save user Success" << endl;
+    return "save-user: success";
+}
+
 /**
  * Processes the client request
  * @return string representing the server response to the request
  */
-string processRequest(char* buffer){
+string processRequest(char* buffer, User *currUser){
     //Gets the information from the buffer
     stringstream ss(buffer);
     string requestString;
@@ -135,7 +164,10 @@ string processRequest(char* buffer){
     //Potential Requests
     string LOGIN = "login=";
     string REGISTER = "register=";
-    string PASSWORD_CHANGE = "passwordchange=";
+    string PASSWORD_CHANGE = "password-change=";
+    string SUBSCRIBE = "subscribe=";
+    string UNSUBSCRIBE = "unsubscribe=";
+    string VIEW_LOCATIONS = "view-locations";
 
     if(requestString.find(LOGIN) != string::npos){
         // Parses the username and password based on the '+' character, after removing the "login=" portion of the request string
@@ -150,8 +182,9 @@ string processRequest(char* buffer){
         ifstream userData("users.txt");
         string line;
         bool matchFound = false;
+        vector<string> data;
         while (getline(userData, line)) {    
-            vector data = split(line, ' ');
+            data = split(line, ' ');
 
             if(username == data.at(0) && password == data.at(1)){
                 matchFound = true;
@@ -161,11 +194,25 @@ string processRequest(char* buffer){
         userData.close();
 
         if(matchFound){
-            // FIXME Initialize a User object for the session
+            currUser->username = data.at(0);
+            currUser->password = data.at(1);
+
+            string locationString = data.at(2).substr(1, data.at(2).length() - 2);
+            if(locationString.length() == 0){
+                currUser->locations = vector<string>(0);
+            }else{
+                currUser->locations = split(locationString, ',');
+            }
+            
+            currUser->inbox = Inbox();
+            currUser->socketNum = 0;
+            cout << "(Login) currUser: " << currUser->username << " " << currUser->oldPassword << " " << currUser->password << " " << currUser->getLocations() << endl;
             return "login-request: successful";
         }else{
             return "login-request: failure";
         }
+    }else{
+        cout << "(HERE) currUser: " << currUser->username << " " << currUser->oldPassword << " " << currUser->password << " " << currUser->getLocations() << endl;
     }
     if(requestString.find(REGISTER) != string::npos){
         // Parses the username and password based on the '+' character, after removing the "register=" portion of the request string
@@ -205,7 +252,7 @@ string processRequest(char* buffer){
             }
 
             //Write the new user data to the file
-            userData << username << " " << password << " " << "[]\n";
+            userData << username << " " << password << " " << "\n";
             userData.close();
 
             return "register-request: success";
@@ -217,55 +264,124 @@ string processRequest(char* buffer){
 
         cout << "Updating password: " << newPassword << endl;
 
-        string username = "TEST_USER"; //FIXME pull the actual username from the current user
-        string password = "TEST_PASSWORD"; //FIXME pull the actual password from the current user
-
-        //update the password in the User class
-
-        //Update the information in the database (text file)
         ifstream inFile("users.txt");  // Open the file for reading
         if (!inFile.is_open()) {
             std::cerr << "Error: Unable to open file for reading." << std::endl;
-            return "password-change-request: failure server_error";
+            return "save-user: failure server_error";
         }
 
         vector<string> lines;
         string line;
         int index = 0;
         while (getline(inFile, line)) {
+            cout << line << endl;
             vector data = split(line, ' ');
-
-            if(username == data.at(0) && password == data.at(1)){
-                line = username + " " + newPassword + " " + data[2];
+    
+            if(currUser->username == data.at(0) && currUser->password == data.at(1)){
+                line = currUser->username + " " + newPassword + " [" + currUser->getLocations() + "]";
                 index = lines.size() - 1;
             }
-
+    
             lines.push_back(line);
         }
+    
         inFile.close();
-
+        cout << index << " / " << lines.size() << endl;
         if (index <= 0 || index > lines.size()) {
             std::cerr << "Error: Invalid line number." << std::endl;
+            return "save-user: failure server_error";
+        }
+
+
+        //Double-checks that the user is saved correctly
+        ifstream fileCheck("users.txt");  // Open the file for reading
+        if (!fileCheck.is_open()) {
+            std::cerr << "Error: Unable to open file for reading." << std::endl;
+            return "save-user: failure server_error";
+        }
+
+        lines = vector<string>(0);
+        string result = "save-user: failure server_error";
+        while (getline(fileCheck, line)) {
+            cout << line << endl;
+            vector data = split(line, ' ');
+    
+            if(currUser->username == data.at(0) && currUser->password == data.at(1)){
+                result = "save-user: success";
+            }
+    
+            lines.push_back(line);
+        }
+    
+        fileCheck.close();
+
+        if(result == "save-user: success"){
+            return "password-change-request: success";
+        }else if(result == "save-user: failure server_error"){
             return "password-change-request: failure server_error";
-        }
-
-        std::ofstream outFile("users.txt");  // Open the file for writing
-        if (!outFile.is_open()) {
-            std::cerr << "Error: Unable to open file for writing." << std::endl;
+        }else{
             return "password-change-request: failure server_error";
-        }
-
-        for (const auto& l : lines) {
-            outFile << l << "\n";
-        }
-
-        outFile.close();  // Close the file after writing
-
-        return "password-change-request: success";
-        //Create a message that says the change was successful/unsuccessful
-    }else{
-        return "HTTP/1.1 404 Not Found\nContent-Type:text/html\nContent-Length: 28\n\n<h1>404 Invalid Request</h1>";
+        } 
+        // <3
     }
+    if(requestString.find(SUBSCRIBE) != string::npos){
+        //FIXME Check if location already exists first!
+        string location = requestString.substr(requestString.find(SUBSCRIBE) + SUBSCRIBE.length());
+
+        cout << "Adding location: " << location << endl;
+
+        currUser->locations.push_back(location);
+
+        cout << currUser->getLocations() << endl;
+
+        // Saves the password and saves the result
+        string result = saveUserInformation(*currUser);
+
+        if(result == "save-user: success"){
+            return "subscribe-request: success";
+        }else if(result == "save-user: failure server_error"){
+            return "subscribe-request: failure server_error";
+        }else{
+            return "subscribe-request: failure server_error";
+        } 
+    }
+    if(requestString.find(UNSUBSCRIBE) != string::npos){
+        string location = requestString.substr(requestString.find(UNSUBSCRIBE) + UNSUBSCRIBE.length());
+
+        cout << "Removing location: " << location << endl;
+
+        //vector<string> newLocations = currUser->locations;
+        for(int i = 0; i < currUser->locations.size(); i++){
+            if(currUser->locations.at(i) == location){
+                currUser->locations.erase(currUser->locations.begin() + i);
+                cout << "Location removed" << endl;
+                i -= 1;
+            }
+        }
+        currUser->locations = newLocations;
+
+        string result = saveUserInformation(*currUser);
+
+        if(result == "save-user: success"){
+            return "unsubscribe-request: success";
+        }else if(result == "unsubscribe-request: failure server_error"){
+            return "save-user: failure server_error";
+        }else{
+            return "unsubscribe-request: failure server_error";
+        } 
+    }
+    if(requestString.find(VIEW_LOCATIONS) != string::npos){
+        string location = requestString.substr(requestString.find(VIEW_LOCATIONS) + VIEW_LOCATIONS.length());
+
+        string result = "subscribed-locations=";
+        for(int i = 0; i < currUser->locations.size(); i++){
+            result += "- " + currUser->locations.at(i) + "\n";
+        }
+
+        return result;
+    }
+    
+    return "HTTP/1.1 404 Not Found\nContent-Type:text/html\nContent-Length: 28\n\n<h1>404 Invalid Request</h1>";
     /** 
     if(requestString.substr(0, 3) == "GET"){
         string request = parseRequest(requestString);
@@ -298,6 +414,9 @@ string processRequest(char* buffer){
 }
 
 void handle_client(int tcp_client_socket){
+    User *currUser = new User();
+    //currUser.socketNum = tcp_client_socket;
+
     cout << "Handle Client function" << endl;
 
     //Set initial status
@@ -318,7 +437,7 @@ void handle_client(int tcp_client_socket){
         //Received a request
         cout << "[SERVER] - Received request" << endl;
 
-        string response = processRequest(buffer);
+        string response = processRequest(buffer, currUser);
         
         /**
          * This code was to prevent the client's buffer from being overfilled, and i havent set up a way to send multiple bits of data yet
