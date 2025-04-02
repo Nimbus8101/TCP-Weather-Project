@@ -29,7 +29,7 @@ string sendRequest(string request, int connectSocket){
         recvbuf[result] = 0;
         string result = recvbuf;
         //cout << "[CLIENT] - Received response:" << endl;
-        cout << result << endl;
+        //cout << result << endl;
 
         response = result;
     }else if(result == 0) {
@@ -118,10 +118,10 @@ bool changePassword(int connectSocket){
     string response = sendRequest(userRequest, connectSocket);
 
     if(response == "password-change-request: success"){
-        cout << "Registration successful" << endl;
+        cout << "Password change successful" << endl;
         return true;
     }else if(response == "password-change-request: failure server_error"){
-        cout << "Registration unsuccessful, try again later" << endl;
+        cout << "Password unsuccessful, try again later" << endl;
         return false;
     }else{
         cout << "[CLIENT] - An error ocurred" << endl;
