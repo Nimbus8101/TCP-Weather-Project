@@ -5,13 +5,21 @@
  * It has some helper functions, and performs tcp protocol
  */
 
-#include <string>
 #include <sstream>
 #include <iostream>
-#include <winsock2.h>
-#include <ws2tcpip.h>
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
 #include <chrono>
 #include <thread>
+#include <cstring>
+#include <unistd.h>
 using namespace std;
 
 #define SERVER_IP "127.0.0.1"
@@ -36,7 +44,10 @@ string sendRequest(string request, int connectSocket){
         cout << "[CLIENT] - Connection closed\n";
         response = "connection_closed";
     }else{
-        cout << "[CLIENT] - recv failed: " << WSAGetLastError() << endl;
+        #if WIN_32 
+            cout << "[CLIENT] - recv failed: " << WSAGetLastError() << endl;
+        #endif
+
         response = "receive_failed";
     }
     return response;
@@ -191,74 +202,34 @@ bool viewLocations(int connectSocket){
 
 
 /**
- * Parses the information from the request
- * @param argc int representing number of arguments given from the command line
- * @param argv pointer array representing the arguments to process
- * @returns string representing the content to process
- */
-string parseContent(int argc, char* argv[]){
-    string arg = argv[2];
-    if(argc == 3){      //For the default usage
-        return argv[2];
-    }else if(arg == "message"){     //For sending a message
-        string content = "";
-        for(int i = 3; i < argc - 1; i++){
-            string temp = argv[i];
-            if(temp == "end"){
-                break;
-            }
-            content += temp + " ";
-        }
-        return content;
-    }else{   //If the inputs don't match any valid inputs
-        return "Incorrect Usage";
-    }
-}
-
-
-/**
  * Main function
  */
 int main() {
-    //Sets the address port and the content
-    string addressPort = "1000";
-    
-    //WSADATA setup
-    WSADATA wsaData;
-    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
-        cout << "[CLIENT] - WSAStartup failed." << endl;
-        return 1;
-    }
-    
-    //Socket setup
-    SOCKET connectSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if (connectSocket == INVALID_SOCKET) {
-        cout << "[CLIENT] - Error creating socket: " << WSAGetLastError() << endl;
-        WSACleanup();
-        return 1;
+    int sockfd;
+    struct sockaddr_in serv_addr;
+
+    // Create socket
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) {
+        perror("ERROR opening socket");
+        exit(1);
     }
 
-    //Server info setup
-    sockaddr_in serverAddress;
-    serverAddress.sin_family = AF_INET;
-    serverAddress.sin_port = htons(PORT);
-    if (inet_pton(AF_INET, "127.0.0.1", &serverAddress.sin_addr) <= 0) {
-        cout << "[CLIENT] - Invalid address/ Address not supported" << endl;
-        closesocket(connectSocket);
-        WSACleanup();
-        return 1;
+    // Set up server address
+    memset(&serv_addr, '0', sizeof(serv_addr));
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_port = htons(8080); // Server port
+    serv_addr.sin_addr.s_addr = INADDR_ANY; // Or use inet_pton to convert IP address string
+
+    // Connect to server
+    if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+        perror("ERROR connecting");
+        exit(1);
     }
 
-    //Socket connection
-    if (connect(connectSocket, (sockaddr*)&serverAddress, sizeof(serverAddress)) < 0) {
-        cout << "[CLIENT] - Connect failed with error: " << WSAGetLastError() << endl;
-        closesocket(connectSocket);
-        WSACleanup();
-        return 1;
-    }
 
-    boolean loop = true;
-    boolean loggedIn = false;
+    bool loop = true;
+    bool loggedIn = false;
     do{
         cout << "\nYou may:" << endl;
         cout << "  1. Login" << endl;
@@ -269,18 +240,18 @@ int main() {
         cin >> userInput;
         
         //Converts the string to lowercase
-        for(int i = 0; i < userInput.length(); i++){
+        for(int i = 0; i < (int) userInput.length(); i++){
             userInput[i] = tolower(userInput[i]);
         }
 
         if(userInput == "login" || userInput == "1"){
-            loggedIn = login(connectSocket);
+            loggedIn = login(sockfd);
             if(loggedIn){
                 loop = false;
             }
         }
         if(userInput == "register" || userInput == "2"){
-            registerUser(connectSocket);
+            registerUser(sockfd);
         }
         if(userInput == "logout" || userInput == "3"){
             cout << "Logging out" << endl;
@@ -316,15 +287,15 @@ int main() {
         cin >> userInput;
         
         //Converts the string to lowercase
-        for(int i = 0; i < userInput.length(); i++){
+        for(int i = 0; i < (int) userInput.length(); i++){
             userInput[i] = tolower(userInput[i]);
         }
 
         if(userInput == SUBSCRIBE_LOCATION || userInput == "1"){
-            subscribeToLocation(connectSocket);
+            subscribeToLocation(sockfd);
         }
         if(userInput == UNSUBSCRIBE_LOCATION || userInput == "2"){
-            unsubscribeFromLocation(connectSocket);
+            unsubscribeFromLocation(sockfd);
         }
         if(userInput == LIST_ONLINE_USERS || userInput == "3"){
         }
@@ -333,58 +304,21 @@ int main() {
         if(userInput == LOCATION_MESSAGE || userInput == "5"){
         }
         if(userInput == VIEW_LOCATIONS || userInput == "6"){
-            viewLocations(connectSocket);
+            viewLocations(sockfd);
         }
         if(userInput == VIEW_MESSAGES || userInput == "7"){
         }
         if(userInput == CHANGE_PASSWORD || userInput == "8"){
-            changePassword(connectSocket);
+            changePassword(sockfd);
         }
         if(userInput == LOGOUT || userInput == "9"){
             loggedIn = false;
         }
     }
 
-    /** 
-    //Loop to repeatedly collect userinput
-    boolean firstLoop = true;
-    do{
-        //The first time the program reaches here, it already has some inputs, and skips this line accordingly
-        if(!firstLoop){
-            cout << "Please input the file you would like to retrieve from the server \nOr the message you would like to send: ";
-            cout.flush();
-            getline(cin, userRequest, '\n');
-        }else{
-            firstLoop = false;
-        }
-
-        //Creates a GET request from the userRequest and sends it
-        string request = "GET /" + userRequest + " HTTP/1.1\r\nHost: 127.0.0.1:80\r\nConnection: keep-alive\r\n\r\n";
-        const char* message = request.c_str();
-        send(connectSocket, message, strlen(message), 0);
-
-        //Waits for a response
-        char recvbuf[1024];
-        int result = recv(connectSocket, recvbuf, sizeof(recvbuf), 0);
-        if(result > 0) {   //If a response was received, display it
-            recvbuf[result] = 0;
-            string result = recvbuf;
-            cout << "[CLIENT] - Received response:" << endl;
-            cout << result << endl;
-        }else if(result == 0) {
-            cout << "[CLIENT] - Connection closed\n";
-            break;
-        }else{
-            cout << "[CLIENT] - recv failed: " << WSAGetLastError() << endl;
-            break;
-        }
-    }while(userRequest != "close");
-
-    */
     //Closes the program when the user enters "close"
     cout << "[CLIENT] - Closing client program..." << endl;
-    closesocket(connectSocket);
-    WSACleanup();
+    close(sockfd);
 
     return 0;
 }

@@ -16,16 +16,18 @@ EXEC2 = tcpServer
 all: $(EXEC1) $(EXEC2)
 
 tcpServer: tcpServer.cpp
-	g++ -Wall -g -o tcpServer tcpServer.cpp -lws2_32
+	g++ -Wall -g -o tcpServer tcpServer.cpp
 
 tcpClient: tcpClient.cpp
-	g++ -Wall -g -o tcpClient tcpClient.cpp -lws2_32
+	g++ -Wall -g -o tcpClient tcpClient.cpp
 
 $(TARGET): $(OBJS)
-	$(CXX) $(CXXFLAGS) -o $(TARGET) $(OBJS) -lws2_32
+	$(CXX) $(CXXFLAGS) -o $(TARGET) $(OBJS)
 # Rule to compile .cpp files into .o files
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 # Clean rule to remove generated files
 clean:
-	del $(TARGET_DEL) $(OBJS)
+# del $(TARGET_DEL) $(OBJS)
+	rm -f tcpClient.exe
+	rm -f tcpServer.exe

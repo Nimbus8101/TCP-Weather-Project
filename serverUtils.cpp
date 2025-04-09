@@ -2,22 +2,31 @@
 
 #ifndef SERVER_UTILS
 #define SERVER_UTILS
+
+#if WIN_32
 #include <WinSock2.h>
 #include <ws2tcpip.h>
+#endif
+
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+
 #include <iostream>
 #include <fstream>
 #include <vector>
 #include "user.cpp"
 #include "utils.cpp"
+#include <unistd.h>
 using namespace std;
 
 class ServerUtils{
     public:
-        static boolean initializeWSA(WSADATA wsaData);
         static int createServerSocket();
         static sockaddr_in defineServerAddress();
-        static boolean bindServerSocket(int tcp_server_socket, sockaddr_in tcp_server_address);
-        static boolean checkIfListening(int tcp_server_socket);
+        static bool bindServerSocket(int tcp_server_socket, sockaddr_in tcp_server_address);
+        static bool checkIfListening(int tcp_server_socket);
         static string saveUserInformation(User currUser);
         static vector<string> readUserVectorFromFile(string filename);
         static bool writeUserDataToFile(vector<string> userData, string filename);
@@ -25,19 +34,6 @@ class ServerUtils{
         static void setUpCurrUser(User *currUser, string username, string password);
         static bool appendUserData(string username, string password, string filename);
 };
-
-/**
- * Initializes the wsaData
- * @param WSADATA wsaData the WSADATA to initialize
- * @return bool representing if the wsaData was initialized or not
- */
-boolean ServerUtils::initializeWSA(WSADATA wsaData){
-    if(WSAStartup(MAKEWORD(2, 2), &wsaData) != 0){
-        cout << "[SERVER] - Could not initialize" << endl;
-        return false;
-    }
-    return true;
-}
 
 /**
  * Creates the server socket
@@ -67,9 +63,9 @@ sockaddr_in ServerUtils::defineServerAddress(){
 
 /**
  * Binds the server socket to the server address
- * @return boolean representing if the socket was bound properly
+ * @return bool representing if the socket was bound properly
  */
-boolean ServerUtils::bindServerSocket(int tcp_server_socket, sockaddr_in tcp_server_address){
+bool ServerUtils::bindServerSocket(int tcp_server_socket, sockaddr_in tcp_server_address){
     //Bind the server socket
     if(bind(tcp_server_socket, (struct sockaddr *)&tcp_server_address, sizeof(tcp_server_address)) != 0){
         cout << "[SERVER] - Could not bind socket" << endl;
@@ -80,12 +76,12 @@ boolean ServerUtils::bindServerSocket(int tcp_server_socket, sockaddr_in tcp_ser
 
 /**
  * Checks if the server socket is listening
- * @return boolean representing if the socket is listening
+ * @return bool representing if the socket is listening
  */
-boolean ServerUtils::checkIfListening(int tcp_server_socket){
+bool ServerUtils::checkIfListening(int tcp_server_socket){
     if(listen(tcp_server_socket, 5) < 0){
         cout << "Error listening for connections" << endl;
-        closesocket(tcp_server_socket);
+        close(tcp_server_socket);
         return false;
     }
     cout << "[SERVER] - Listening on 127.0.0.1:39756" << endl;
@@ -96,26 +92,20 @@ vector<string> ServerUtils::readUserVectorFromFile(string filename){
     vector<string> lines = vector<string>(0);
 
      //Open a file
-     ifstream inFile(filename);
-     if (!inFile.is_open()) {
-         std::cerr << "Error: Unable to open file for reading." << std::endl;
-         return lines;
-     }
+    ifstream file(filename);
+    if (!file.is_open()) {
+        std::cerr << "Error: Unable to open file for reading." << std::endl;
+        return lines;
+    }
 
      //Pull the lines of data
-     string line;
-     int index = 0;
-     while (getline(inFile, line)) { 
+    string line;
+    while (getline(file, line)) { 
         lines.push_back(line);
-     }
- 
-     inFile.close();
-     if (index <= 0 || index > lines.size()) {
-         std::cerr << "Error: Invalid line number." << std::endl;
-         return vector<string>(0);
-     }
+    }
+    file.close();
 
-     return lines;
+    return lines;
 }
 
 bool ServerUtils::writeUserDataToFile(vector<string> userData, string filename){
@@ -137,7 +127,7 @@ bool ServerUtils::writeUserDataToFile(vector<string> userData, string filename){
 string ServerUtils::saveUserInformation(User currUser){
     vector<string> userData = readUserVectorFromFile("users.txt");
 
-    for(int i = 0; i < userData.size(); i++){
+    for(int i = 0; i < (int) userData.size(); i++){
         if(userData.at(i).find(currUser.username) != string::npos && userData.at(i).find(currUser.password) != string::npos){
             userData.at(i) = currUser.username + " " + currUser.password + " [" + currUser.getLocations() + "]";
         }
@@ -174,7 +164,7 @@ void ServerUtils::setUpCurrUser(User *currUser, string username, string password
         if(username == data.at(0) && password == data.at(1)){
             currUser->username = data.at(0);
             currUser->password = data.at(1);
-            currUser->inbox = Inbox();
+            //currUser->inbox = Inbox();
             currUser->socketNum = 0;
 
             string locationString = data.at(2).substr(1, data.at(2).length() - 2);
@@ -200,6 +190,8 @@ bool ServerUtils::appendUserData(string username, string password, string filena
     //Write the new user data to the file
     userData << username << " " << password << " []" << "\n";
     userData.close();
+
+    return true;
 }
 
 

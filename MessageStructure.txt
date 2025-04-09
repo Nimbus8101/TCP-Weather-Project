@@ -1,8 +1,10 @@
 Message Structure
-    login    - login=username+password
-    register - register=username+password
-    change password - password-change=password
-    subscribe - subscribe=location
+    login    - login=[username]+[password]
+    register - register=[username]+[password]
+    change password - password-change=[password]
+    subscribe - subscribe=[location]
+    unsubscribe - unsubscribe=[location]
+    logout - logout
 
 Response Structure:
     login
@@ -10,13 +12,16 @@ Response Structure:
         Failure - login-request: failure
     register   
         Success - register-request: success
-        Failure - register-request: failure [server_error account_already_exists]
+        Failure - register-request: failure [server_error | account_already_exists]
     change password
         Success - password-change-request: success
         Failure - password-change-request: failure [server_error]
     subscribe
-        Success - 
-        Failure - 
+        Success - subscribe-request: success
+        Failure - subscribe-request: failure [server_error]
+    unsubscribe
+        Success - unsubscribe-request: success
+        Failure - unsubscribe-request: failure [server_error]
 
 users.txt Structure
     username password [location1,location2,...]

@@ -4,16 +4,21 @@
  * This file contains all the code to start a server, as well as to receive and process responses from a client
  */
 
+#include <sstream>
+#include <iostream>
+
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/types.h> 
+#include <string.h>
+#include <errno.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
+#include <chrono>
 #include <thread>
-#include <WinSock2.h>
-#include <ws2tcpip.h>
-#include <iostream>
-#include <sstream>
-#include <fstream>
-#include <vector>
+#include <cstring>
+#include <unistd.h>
 #include "user.cpp"
 #include "utils.cpp"
 #include "serverUtils.cpp"
@@ -85,14 +90,12 @@ string changePassword(User *currUser, string newPassword){
         //Pulls the lines of data and rewrites on of them
         vector<string> lines = vector<string>(0);
         string line;
-        int index = 0;
         while (getline(inFile, line)) {
             vector data = Utils::split(line, ' ');
     
             if(currUser->username == data.at(0) && currUser->password == data.at(1)){
                 line = currUser->username + " " + newPassword + " [" + currUser->getLocations() + "]";
                 currUser->password = newPassword;
-                index = lines.size();
             }
             lines.push_back(line);
         }
@@ -108,8 +111,9 @@ string changePassword(User *currUser, string newPassword){
         }
 
         //Write the new user data to the file
-        for(int i = 0; i < lines.size(); i++){
+        for(int i = 0; i < (int) lines.size(); i++){
             userData << lines.at(i) << "\n";
+            cout << lines.at(i) << endl;
         }
         userData.close();
 
@@ -128,7 +132,7 @@ string unsubscribe(User *currUser, string location){
     cout << "[SERVER] - Unsubscribing user " << currUser->username << " from " << location << endl;
 
     //Finds and removes the location give
-    for(int i = 0; i < currUser->locations.size(); i++){
+    for(int i = 0; i < (int) currUser->locations.size(); i++){
         if(currUser->locations.at(i) == location){
             currUser->locations.erase(currUser->locations.begin() + i);
             break;
@@ -182,7 +186,7 @@ string subscribe(User *currUser, string location){
  */
 string viewLocations(User *currUser){
     string result = "subscribed-locations=\n";
-    for(int i = 0; i < currUser->locations.size(); i++){
+    for(int i = 0; i < (int) currUser->locations.size(); i++){
         result += " - " + currUser->locations.at(i) + "\n";
     }
 
@@ -211,7 +215,7 @@ string processRequest(char* buffer, User *currUser){
         return registerUser(currUser, Utils::split(Utils::parseRequestContent(requestString, requestType), '+'));
     }
     else if(requestType == Utils::CHANGE_PASSWORD){
-       return changePassword(currUser, Utils::parseRequestContent(requestString, requestType));
+        return changePassword(currUser, Utils::parseRequestContent(requestString, requestType));
     }
     else if(requestType == Utils::UNSUBSCRIBE_LOCATION){
         return unsubscribe(currUser, Utils::parseRequestContent(requestString, requestType));
@@ -265,10 +269,13 @@ int main(){
     vector<User> users = vector<User>(0);
 
     //WSADATA setup
-    WSADATA wsaData;
+    #if _WIN32 
+        WSADATA wsaData;
     if(!ServerUtils::initializeWSA(wsaData)){
         return -1;
     }
+
+    #endif
 
     //Socket setup
     int tcp_server_socket = ServerUtils::createServerSocket();
@@ -300,15 +307,19 @@ int main(){
         }
 
          // Create a new thread to handle the client
-         std::thread client_thread(handle_client, tcp_client_socket);
+        std::thread client_thread(handle_client, tcp_client_socket);
 
          // Detach the thread to allow it to run independently
-         client_thread.detach(); 
+        client_thread.detach(); 
     }
     
     //Close the socket
-    closesocket(tcp_server_socket);
-    WSACleanup();
+    close(tcp_server_socket);
+    
+    #if WIN_32
+        WSACleanup();
+    #endif
+    
     cout << "[SERVER] - Server about to close" << endl;
     return 0;
 }

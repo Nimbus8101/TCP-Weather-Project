@@ -1,0 +1,19 @@
+Project: TCP Weather Project
+
+Descriptions:
+    This project is part 1 of the project, and implements the following requirements:
+     - User can register
+     - User can login
+     - User can change their password
+     - User can subscribe to a location
+     - User can unsubscribe from a location
+     - User can view subscribed locations
+     - User can logout
+
+This project was built in the Windows Linux Subsystem, and compliles and runs fine on my machine. I was unable to run anything on the ssh server, due to denied permissions, and i couldn't figure out how to. So i included images of the terminal messages to demonstrate the functionality, which should also be visible in my code
+
+- The tcpSserver.cpp contains code for starting and running the server, as well as has functions for each of the required functions, such as changing password or subscribing to a location.
+- The serverUtils.cpp has some functions that are used in tcpServer.cpp, but in a seperate file to prevent clutter. Things like reading and writing to the users.txt file
+- The tcpClient.cpp contains the code for starting and running the client.
+- The user.cpp file keeps track of User variables during the session
+- The utils.cpp file is for general utils, such as defining string and integer values for each option in the menu, making the code more readable

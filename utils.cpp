@@ -44,20 +44,22 @@ class Utils{
             else if(request.find(LIST_ONLINE_USERS_REQUEST) != string::npos) return LIST_ONLINE_USERS;
             else if(request.find(PRIVATE_MESSAGE_REQUEST) != string::npos) return PRIVATE_MESSAGE;
             else if(request.find(VIEW_MESSAGES_REQUEST) != string::npos) return VIEW_MESSAGES;
-            else if(request.find(LOGOUT_REQUEST) != string::npos) return LOGOUT;
+            else if (request.find(LOGOUT_REQUEST) != string::npos) return LOGOUT;
+            else return -5;
         }
 
         static string getRequestString(int requestType){
             if(requestType == REGISTER) return REGISTER_REQUEST;
-            if(requestType == LOGIN) return LOGIN_REQUEST;
-            if(requestType == CHANGE_PASSWORD) return CHANGE_PASSWORD_REQUEST;
-            if(requestType == VIEW_LOCATIONS) return VIEW_LOCATIONS_REQUEST;
-            if(requestType == UNSUBSCRIBE_LOCATION) return UNSUBSCRIBE_LOCATION_REQUEST;
-            if(requestType == SUBSCRIBE_LOCATION) return SUBSCRIBE_LOCATION_REQUEST;
-            if(requestType == LOCATION_MESSAGE) return LOCATION_MESSAGE_REQUEST;
-            if(requestType == LIST_ONLINE_USERS) return LIST_ONLINE_USERS_REQUEST;
-            if(requestType == VIEW_MESSAGES) return VIEW_MESSAGES_REQUEST;
-            if(requestType == LOGOUT) return LOGOUT_REQUEST;
+            else if(requestType == LOGIN) return LOGIN_REQUEST;
+            else if(requestType == CHANGE_PASSWORD) return CHANGE_PASSWORD_REQUEST;
+            else if(requestType == VIEW_LOCATIONS) return VIEW_LOCATIONS_REQUEST;
+            else if(requestType == UNSUBSCRIBE_LOCATION) return UNSUBSCRIBE_LOCATION_REQUEST;
+            else if(requestType == SUBSCRIBE_LOCATION) return SUBSCRIBE_LOCATION_REQUEST;
+            else if(requestType == LOCATION_MESSAGE) return LOCATION_MESSAGE_REQUEST;
+            else if(requestType == LIST_ONLINE_USERS) return LIST_ONLINE_USERS_REQUEST;
+            else if(requestType == VIEW_MESSAGES) return VIEW_MESSAGES_REQUEST;
+            else if(requestType == LOGOUT) return LOGOUT_REQUEST;
+            else return "NONE";
         }
 
         static string parseRequestContent(string request, int requestType){

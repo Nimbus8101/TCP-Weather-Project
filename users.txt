@@ -1,3 +1,2 @@
-test_user_1 password [Alabama,Florida]
-test_user_2 password [Arkansas,California]
-ereyna ereyna [Other_navarre,navvareafd]
+test_user test_password [test_location_1]
+test_user2 test_password []

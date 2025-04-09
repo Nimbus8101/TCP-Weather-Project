@@ -8,7 +8,6 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include "Inbox.cpp"
 using namespace std;
 
 struct User{
@@ -17,7 +16,6 @@ struct User{
     string oldPassword;
     vector<string> locations;
     int socketNum;
-    Inbox inbox;
 
     User(){}
 
@@ -29,11 +27,11 @@ struct User{
 
     string getLocations(){
         string result = "";
-        if(locations.size() >= 1){
-            for(int i = 0; i < locations.size() - 1; i++){
+        if((int) locations.size() >= 1){
+            for(int i = 0; i < (int) locations.size() - 1; i++){
                 result += locations.at(i) + ",";
             }
-            result += locations.at(locations.size() - 1);
+            result += locations.at((int) locations.size() - 1);
         }
         return result;
     }
